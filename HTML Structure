@@ -1,0 +1,6 @@
+<h1 id="title">Global Temperature Heat Map</h1>
+<p id="description">This heat map visualizes global temperature data from 1754 to 2015 based on monthly temperature variations.</p>
+
+<svg id="heatmap"></svg>
+<div id="legend"></div>
+<div id="tooltip" style="position: absolute; visibility: hidden;"></div>
