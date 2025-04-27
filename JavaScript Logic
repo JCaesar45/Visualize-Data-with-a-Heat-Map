@@ -1,0 +1,94 @@
+const url = 'https://raw.githubusercontent.com/freeCodeCamp/ProjectReferenceData/master/global-temperature.json';
+
+d3.json(url).then(data => {
+  const dataset = data.monthlyVariance;
+  const baseTemperature = data.baseTemperature;
+
+  const margin = { top: 20, right: 30, bottom: 40, left: 40 };
+  const width = 800 - margin.left - margin.right;
+  const height = 600 - margin.top - margin.bottom;
+
+  const svg = d3.select("#heatmap")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", `translate(${margin.left},${margin.top})`);
+
+  // Set up the color scale
+  const colorScale = d3.scaleSequential(d3.interpolateInferno)
+    .domain([d3.min(dataset, d => baseTemperature + d.variance), d3.max(dataset, d => baseTemperature + d.variance)]);
+
+  // Create x-axis scale (years)
+  const years = d3.set(dataset.map(d => d.year)).values();
+  const xScale = d3.scaleBand()
+    .domain(years)
+    .range([0, width])
+    .padding(0.05);
+
+  // Create y-axis scale (months)
+  const months = d3.scaleBand()
+    .domain(["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"])
+    .range([0, height]);
+
+  // Add x-axis
+  svg.append("g")
+    .attr("id", "x-axis")
+    .attr("transform", `translate(0, ${height})`)
+    .call(d3.axisBottom(xScale).tickFormat(d => d));
+
+  // Add y-axis
+  svg.append("g")
+    .attr("id", "y-axis")
+    .call(d3.axisLeft(months));
+
+  // Create the cells for the heatmap
+  svg.selectAll(".cell")
+    .data(dataset)
+    .enter()
+    .append("rect")
+    .attr("class", "cell")
+    .attr("data-month", d => d.month - 1)
+    .attr("data-year", d => d.year)
+    .attr("data-temp", d => baseTemperature + d.variance)
+    .attr("x", d => xScale(d.year))
+    .attr("y", d => months(d3.timeMonth.format("%B")(d.month - 1)))
+    .attr("width", xScale.bandwidth())
+    .attr("height", months.bandwidth())
+    .attr("fill", d => colorScale(baseTemperature + d.variance))
+    .on("mouseover", function(event, d) {
+      const tooltip = d3.select("#tooltip");
+      tooltip.transition().duration(200).style("visibility", "visible");
+      tooltip.html(`${d3.timeMonth.format("%B")(d.month - 1)} ${d.year}<br>${(baseTemperature + d.variance).toFixed(1)}°C`)
+        .attr("data-year", d.year)
+        .style("left", `${event.pageX + 5}px`)
+        .style("top", `${event.pageY - 28}px`);
+    })
+    .on("mouseout", function() {
+      d3.select("#tooltip").transition().duration(200).style("visibility", "hidden");
+    });
+
+  // Create the legend
+  const legend = d3.select("#legend")
+    .selectAll("rect")
+    .data(colorScale.range())
+    .enter()
+    .append("rect")
+    .attr("width", 30)
+    .attr("height", 10)
+    .attr("x", (d, i) => i * 32)
+    .attr("fill", d => d);
+
+  // Add labels to the legend
+  const legendScale = d3.scaleLinear()
+    .domain([d3.min(dataset, d => baseTemperature + d.variance), d3.max(dataset, d => baseTemperature + d.variance)])
+    .range([0, 120]);
+
+  legend.selectAll("text")
+    .data(legendScale.ticks(5))
+    .enter()
+    .append("text")
+    .attr("x", (d, i) => i * 32 + 15)
+    .attr("y", 20)
+    .attr("text-anchor", "middle")
+    .text(d => d.toFixed(1));
+});
